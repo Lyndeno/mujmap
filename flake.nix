@@ -68,10 +68,6 @@
           inherit src;
         };
 
-        mujmap-deny = craneLib.cargoDeny {
-          inherit src;
-        };
-
         pre-commit-check = pre-commit-check {
           alejandra.enable = true;
         };
@@ -97,11 +93,6 @@
           packages = with pkgs; [
             rustfmt
             clippy
-            cargo-deny
-            cargo-about
-            termshot
-            pkg-config
-            udev
           ];
           shellHook = ''
             ${checks.shellHook}
