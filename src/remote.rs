@@ -456,6 +456,7 @@ impl Remote {
 
     /// Given an `Email/get` state, return the latest `Email/get` state and a list of new/updated
     /// `Email` IDs and destroyed `Email` IDs.
+    #[allow(clippy::type_complexity)]
     pub fn changed_email_ids(
         &mut self,
         state: State,
