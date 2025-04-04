@@ -270,7 +270,7 @@ impl Remote {
                 })
             }
 
-            Err(ureq::Error::Status(code, ref r)) if code == 401 => {
+            Err(ureq::Error::Status(401, ref r)) => {
                 fn encode_basic(username: &str, password: &str) -> String {
                     let safe_username = match username.find(':') {
                         Some(idx) => &username[..idx],
