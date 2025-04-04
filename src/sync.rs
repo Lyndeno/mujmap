@@ -155,7 +155,7 @@ pub enum Error {
     PushChanges { source: remote::Error },
 
     #[snafu(display("Programmer error!"))]
-    ProgrammerError {},
+    Programmer {},
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -483,7 +483,7 @@ pub fn sync(
                             "Could not find local email for updated remote ID {}",
                             remote_email.id
                         );
-                        Error::ProgrammerError {}
+                        Error::Programmer {}
                     })?;
 
                     // Add mailbox tags
