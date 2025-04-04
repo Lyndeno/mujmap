@@ -864,7 +864,7 @@ impl Remote {
     }
 
     /// Return all `jmap::Identity` objects from the server.
-    pub fn get_identities<'a>(&mut self) -> Result<Vec<jmap::Identity>> {
+    pub fn get_identities(&mut self) -> Result<Vec<jmap::Identity>> {
         const GET_METHOD_ID: &str = "0";
 
         let account_id = &self.session.primary_accounts.mail;
