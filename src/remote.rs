@@ -1279,6 +1279,7 @@ pub struct AvailableMailboxRoles {
 }
 
 /// An object which contains only the properties of a remote Email that mujmap cares about.
+#[allow(unused)]
 #[derive(Debug)]
 pub struct Email {
     pub id: Id,
