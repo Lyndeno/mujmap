@@ -747,7 +747,7 @@ impl Remote {
         // its parent.
         fn get_or_create_mailbox_id<'a>(
             tag: &'a str,
-            account_id: &'a Id,
+            _account_id: &'a Id,
             mailboxes: &Mailboxes,
             tags_config: &'a config::Tags,
             created_tags_by_id: &'a mut Vec<String>,
@@ -758,7 +758,7 @@ impl Remote {
                 Some(index) => {
                     let parent_id = get_or_create_mailbox_id(
                         &tag[..index],
-                        account_id,
+                        _account_id,
                         mailboxes,
                         tags_config,
                         created_tags_by_id,
