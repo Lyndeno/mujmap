@@ -250,7 +250,7 @@ pub fn sync(
             let (state, updated_ids) = remote.all_email_ids().context(IndexRemoteEmailsSnafu {})?;
             // TODO can we optimize these two lines?
             let local_ids: HashSet<jmap::Id> =
-                local_emails.iter().map(|(id, _)| id).cloned().collect();
+                local_emails.keys().cloned().collect();
             let destroyed_ids = local_ids.difference(&updated_ids).cloned().collect();
             Ok((state, updated_ids, destroyed_ids))
         };
@@ -386,7 +386,7 @@ pub fn sync(
         .context(IndexLocalUpdatedEmailsSnafu {})?
         .into_iter()
         // Filter out emails that were destroyed on the server.
-        .filter(|(id, _)| !destroyed_ids.contains(&id))
+        .filter(|(id, _)| !destroyed_ids.contains(id))
         .collect();
 
     if pull {
@@ -447,7 +447,7 @@ pub fn sync(
                     .map(|new_email| {
                         let local_email =
                             local
-                                .add_new_email(&new_email)
+                                .add_new_email(new_email)
                                 .context(AddLocalEmailSnafu {
                                     filename: &new_email.cache_path,
                                 })?;
@@ -508,7 +508,7 @@ pub fn sync(
                     // matches ours. Fortunately, our generated name (the raw JMAP mailbox.message
                     // id) will always be a substring of notmuch's version (same name with flags
                     // attached), so a starts-with test is enough.
-                    if let Some(mut new_email) = new_emails.get_mut(&remote_email.id) {
+                    if let Some(new_email) = new_emails.get_mut(&remote_email.id) {
                         if let Some(our_filename) = new_email
                             .maildir_path
                             .file_name()
@@ -520,9 +520,8 @@ pub fn sync(
                             {
                                 if let Some(new_maildir_path) = message
                                     .filenames()
-                                    .into_iter()
                                     .filter(|f| {
-                                        f.file_name().map_or(false, |p| {
+                                        f.file_name().is_some_and(|p| {
                                             p.to_string_lossy().starts_with(&*our_filename)
                                         })
                                     })
@@ -538,7 +537,7 @@ pub fn sync(
                 // Finally, remove the old messages from the database.
                 for destroyed_local_email in &destroyed_local_emails {
                     local
-                        .remove_email(*destroyed_local_email)
+                        .remove_email(destroyed_local_email)
                         .context(RemoveLocalEmailSnafu {})?;
                 }
 
@@ -673,7 +672,7 @@ fn download(
         .read_email_blob(&remote_email.blob_id)
         .context(DownloadRemoteEmailSnafu {})?;
     cache
-        .download_into_cache(&new_email, reader, convert_dos_to_unix)
+        .download_into_cache(new_email, reader, convert_dos_to_unix)
         .context(CacheNewEmailSnafu {})?;
     Ok(())
 }
@@ -750,7 +749,7 @@ Continue? (y/N)
 Please run mujmap again in an interactive terminal to resolve.
 "
                     );
-                    return Err(Error::MissingNotmuchDatabaseRevision {});
+                    Err(Error::MissingNotmuchDatabaseRevision {})
                 }
             }
         }

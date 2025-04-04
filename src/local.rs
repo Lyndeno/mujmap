@@ -18,8 +18,8 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::path::StripPrefixError;
 
-const ID_PATTERN: &'static str = r"[-A-Za-z0-9_]+";
-const MAIL_PATTERN: &'static str = formatcp!(r"^({})\.({})(?:$|:)", ID_PATTERN, ID_PATTERN);
+const ID_PATTERN: &str = r"[-A-Za-z0-9_]+";
+const MAIL_PATTERN: &str = formatcp!(r"^({})\.({})(?:$|:)", ID_PATTERN, ID_PATTERN);
 
 lazy_static! {
     /// mujmap *must not* touch automatic tags, and should warn if the JMAP server contains
@@ -188,7 +188,6 @@ impl Local {
         let message = self.db.index_file(&new_email.maildir_path, None)?;
         let tags = message
             .tags()
-            .into_iter()
             .filter(|tag| !AUTOMATIC_TAGS.contains(tag.as_str()))
             .collect();
         Ok(Email {
@@ -213,13 +212,13 @@ impl Local {
             self.db
                 .create_query(query_string)
                 .with_context(|_| CreateNotmuchQuerySnafu {
-                    query: query_string.clone(),
+                    query: query_string,
                 })?;
         query.set_omit_excluded(Exclude::False);
         let messages = query
             .search_messages()
             .with_context(|_| ExecuteNotmuchQuerySnafu {
-                query: query_string.clone(),
+                query: query_string,
             })?;
         Ok(messages
             .into_iter()
@@ -244,7 +243,6 @@ impl Local {
         }
         message
             .filenames()
-            .into_iter()
             .filter(|x| x.starts_with(&self.mail_cur_dir))
             .flat_map(|path| {
                 MAIL_FILE
@@ -263,7 +261,6 @@ impl Local {
                 path,
                 tags: message
                     .tags()
-                    .into_iter()
                     .filter(|tag| !AUTOMATIC_TAGS.contains(tag.as_str()))
                     .collect(),
             })
@@ -278,7 +275,7 @@ impl Local {
         if let Some(message) = self.get_message(&email.message_id)? {
             // Build diffs for tags and apply them.
             message.freeze()?;
-            let extant_tags: HashSet<String> = message.tags().into_iter().collect();
+            let extant_tags: HashSet<String> = message.tags().collect();
             let tags_to_remove: Vec<&str> = extant_tags
                 .iter()
                 .map(|tag| tag.as_str())

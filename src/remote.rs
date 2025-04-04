@@ -191,10 +191,10 @@ impl Remote {
 
         let remote = match (&config.fqdn, &config.session_url) {
             (Some(fqdn), _) => {
-                Self::open_host(&fqdn, config.username.as_str(), &password, config.timeout)
+                Self::open_host(fqdn, config.username.as_str(), &password, config.timeout)
             }
             (_, Some(session_url)) => Remote::open_url(
-                &session_url.as_str(),
+                session_url.as_str(),
                 config.username.as_str(),
                 &password,
                 config.timeout,
@@ -404,7 +404,7 @@ impl Remote {
                     call: jmap::MethodCall::EmailQuery {
                         query: jmap::MethodCallQuery {
                             account_id,
-                            anchor: Some(&email_ids.last().unwrap()),
+                            anchor: Some(email_ids.last().unwrap()),
                             anchor_offset: 1,
                             position: 0,
                             limit: None,
@@ -649,9 +649,9 @@ impl Remote {
                 while let Some(parent_id) = maybe_parent_id {
                     // Make sure there isn't a loop.
                     ensure!(!path_ids.contains(&parent_id), InvalidMailboxPathSnafu {});
-                    path_ids.push(&parent_id);
+                    path_ids.push(parent_id);
                     let parent = jmap_mailboxes
-                        .get(&parent_id)
+                        .get(parent_id)
                         .ok_or(Error::InvalidMailboxPath {})?;
                     if should_ignore_mailbox_role(&parent.role) {
                         return Ok(None);
@@ -662,10 +662,10 @@ impl Remote {
                     .into_iter()
                     .rev()
                     .map(|x| {
-                        let mailbox = &jmap_mailboxes[&x];
+                        let mailbox = &jmap_mailboxes[x];
                         mailbox
                             .role
-                            .map(|x| match x {
+                            .and_then(|x| match x {
                                 MailboxRole::Drafts => Some("draft"),
                                 MailboxRole::Flagged => Some("flagged"),
                                 MailboxRole::Important => Some(tags_config.important.as_str()),
@@ -675,7 +675,6 @@ impl Remote {
                                 MailboxRole::Trash => Some(tags_config.deleted.as_str()),
                                 _ => None,
                             })
-                            .flatten()
                             .unwrap_or_else(|| {
                                 if tags_config.lowercase {
                                     &lowercase_names[&x]
@@ -799,7 +798,7 @@ impl Remote {
             let account_id = &self.session.primary_accounts.mail;
             for tag in tags.iter().sorted_unstable_by_key(|x| x.len()) {
                 get_or_create_mailbox_id(
-                    &tag,
+                    tag,
                     account_id,
                     mailboxes,
                     tags_config,
@@ -1106,7 +1105,7 @@ impl Remote {
                                 &*EMAIL_SUBMISSION_CLIENT_ID,
                                 &jmap::EmailSubmissionCreate {
                                     identity_id: &identity_id,
-                                    email_id: &*EMAIL_CLIENT_ID_REF,
+                                    email_id: &EMAIL_CLIENT_ID_REF,
                                     envelope: jmap::Envelope {
                                         mail_from: jmap::Address {
                                             email: from_address,
@@ -1143,7 +1142,7 @@ impl Remote {
             .context(ImportEmailSnafu {})?;
         let imported_email_id = import_response
             .created
-            .and_then(|x| x.into_iter().map(|(_, object)| object.id).next())
+            .and_then(|x| x.into_values().map(|object| object.id).next())
             .context(UnexpectedResponseSnafu {})?;
 
         // Verify that the rest of the submission succeeded. If it doesn't, we destroy the draft we
@@ -1223,7 +1222,7 @@ impl Remote {
         self.http_wrapper.post_string(&uri, body)
     }
 
-    fn request<'a>(&self, request: jmap::Request<'a>) -> Result<jmap::Response> {
+    fn request(&self, request: jmap::Request<'_>) -> Result<jmap::Response> {
         self.http_wrapper.post_json(&self.session.api_url, request)
     }
 

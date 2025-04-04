@@ -48,7 +48,7 @@ fn try_main(stdout: &mut StandardStream) -> Result<(), Error> {
     // their maildir "-oi", or something like that, this would cause mujmap to fail unnecessarily.
     // However, clap does not yet support "long" arguments with more than one character, so this is
     // our best option. See: https://github.com/clap-rs/clap/issues/1210
-    let args = Args::parse_from(env::args().into_iter().filter(|a| a != "-oi"));
+    let args = Args::parse_from(env::args().filter(|a| a != "-oi"));
 
     env_logger::Builder::new()
         .filter_level(args.verbose.log_level_filter())

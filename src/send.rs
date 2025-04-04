@@ -175,7 +175,7 @@ fn get_identity_id_for_sender_address(
     ensure!(
         !sender_identities.is_empty(),
         NoIdentitiesForSenderSnafu {
-            sender: address_to_string(&sender_address),
+            sender: address_to_string(sender_address),
         }
     );
     // Prefer a concrete identity over a wildcard.

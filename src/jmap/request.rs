@@ -50,7 +50,7 @@ pub struct RequestInvocation<'a> {
     pub id: &'a str,
 }
 
-impl<'a> Serialize for RequestInvocation<'a> {
+impl Serialize for RequestInvocation<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
