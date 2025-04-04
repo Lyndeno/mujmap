@@ -69,10 +69,10 @@ pub enum Error {
     UnexpectedResponse,
 
     #[snafu(display("Method-level JMAP error: {:?}", error))]
-    MethodError { error: jmap::MethodResponseError },
+    Method { error: jmap::MethodResponseError },
 
     #[snafu(display("Could not read Email blob from server: {}", source))]
-    ReadEmailBlobError { source: ureq::Error },
+    ReadEmailBlob { source: ureq::Error },
 
     #[snafu(display("Could not find an archive mailbox"))]
     NoArchive {},
@@ -1387,7 +1387,7 @@ fn expect_email_get(
     }
     match invocation.call {
         jmap::MethodResponse::EmailGet(get) => Ok(get),
-        jmap::MethodResponse::Error(error) => Err(Error::MethodError { error }),
+        jmap::MethodResponse::Error(error) => Err(Error::Method { error }),
         _ => Err(Error::UnexpectedResponse),
     }
 }
@@ -1401,7 +1401,7 @@ fn expect_email_query(
     }
     match invocation.call {
         jmap::MethodResponse::EmailQuery(query) => Ok(query),
-        jmap::MethodResponse::Error(error) => Err(Error::MethodError { error }),
+        jmap::MethodResponse::Error(error) => Err(Error::Method { error }),
         _ => Err(Error::UnexpectedResponse),
     }
 }
@@ -1415,7 +1415,7 @@ fn expect_email_changes(
     }
     match invocation.call {
         jmap::MethodResponse::EmailChanges(changes) => Ok(changes),
-        jmap::MethodResponse::Error(error) => Err(Error::MethodError { error }),
+        jmap::MethodResponse::Error(error) => Err(Error::Method { error }),
         _ => Err(Error::UnexpectedResponse),
     }
 }
@@ -1429,7 +1429,7 @@ fn expect_email_set(
     }
     match invocation.call {
         jmap::MethodResponse::EmailSet(set) => Ok(set),
-        jmap::MethodResponse::Error(error) => Err(Error::MethodError { error }),
+        jmap::MethodResponse::Error(error) => Err(Error::Method { error }),
         _ => Err(Error::UnexpectedResponse),
     }
 }
@@ -1443,7 +1443,7 @@ fn expect_email_import(
     }
     match invocation.call {
         jmap::MethodResponse::EmailImport(import) => Ok(import),
-        jmap::MethodResponse::Error(error) => Err(Error::MethodError { error }),
+        jmap::MethodResponse::Error(error) => Err(Error::Method { error }),
         _ => Err(Error::UnexpectedResponse),
     }
 }
@@ -1457,7 +1457,7 @@ fn expect_mailbox_get(
     }
     match invocation.call {
         jmap::MethodResponse::MailboxGet(get) => Ok(get),
-        jmap::MethodResponse::Error(error) => Err(Error::MethodError { error }),
+        jmap::MethodResponse::Error(error) => Err(Error::Method { error }),
         _ => Err(Error::UnexpectedResponse),
     }
 }
@@ -1471,7 +1471,7 @@ fn expect_mailbox_set(
     }
     match invocation.call {
         jmap::MethodResponse::MailboxSet(set) => Ok(set),
-        jmap::MethodResponse::Error(error) => Err(Error::MethodError { error }),
+        jmap::MethodResponse::Error(error) => Err(Error::Method { error }),
         _ => Err(Error::UnexpectedResponse),
     }
 }
@@ -1485,7 +1485,7 @@ fn expect_email_submission_set(
     }
     match invocation.call {
         jmap::MethodResponse::EmailSubmissionSet(set) => Ok(set),
-        jmap::MethodResponse::Error(error) => Err(Error::MethodError { error }),
+        jmap::MethodResponse::Error(error) => Err(Error::Method { error }),
         _ => Err(Error::UnexpectedResponse),
     }
 }
@@ -1499,7 +1499,7 @@ fn expect_identity_get(
     }
     match invocation.call {
         jmap::MethodResponse::IdentityGet(get) => Ok(get),
-        jmap::MethodResponse::Error(error) => Err(Error::MethodError { error }),
+        jmap::MethodResponse::Error(error) => Err(Error::Method { error }),
         _ => Err(Error::UnexpectedResponse),
     }
 }
