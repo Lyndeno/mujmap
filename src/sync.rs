@@ -520,12 +520,11 @@ pub fn sync(
                             {
                                 if let Some(new_maildir_path) = message
                                     .filenames()
-                                    .filter(|f| {
+                                    .find(|f| {
                                         f.file_name().is_some_and(|p| {
                                             p.to_string_lossy().starts_with(&*our_filename)
                                         })
                                     })
-                                    .next()
                                 {
                                     new_email.maildir_path = new_maildir_path;
                                 }
