@@ -559,7 +559,7 @@ impl Remote {
     }
 
     /// Return the `Mailboxes` of the server.
-    pub fn get_mailboxes<'a>(&mut self, tags_config: &config::Tags) -> Result<Mailboxes> {
+    pub fn get_mailboxes(&mut self, tags_config: &config::Tags) -> Result<Mailboxes> {
         const GET_METHOD_ID: &str = "0";
 
         let account_id = &self.session.primary_accounts.mail;
