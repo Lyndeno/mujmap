@@ -157,9 +157,9 @@ pub struct Tags {
     /// the `$Junk` and `$NotJunk` keywords. mujmap behaves in the following way:
     ///
     /// * If the mailbox exists, it becomes the sole source of truth. mujmap will entirely disregard
-    /// the `$Junk` and `$NotJunk` keywords. * If the mailbox does not exist, messages with the
-    /// `$Junk` keyword *that do not also have* a `$NotJunk` keyword are tagged as spam. When
-    /// pushing, both `$Junk` and `$NotJunk` are set appropriately.
+    ///   the `$Junk` and `$NotJunk` keywords. * If the mailbox does not exist, messages with the
+    ///   `$Junk` keyword *that do not also have* a `$NotJunk` keyword are tagged as spam. When
+    ///   pushing, both `$Junk` and `$NotJunk` are set appropriately.
     ///
     /// This configuration option is called `spam` instead of `junk` despite all of the
     /// aforementioned specifications preferring "junk" because notmuch's UIs all prefer "spam" by
@@ -177,9 +177,9 @@ pub struct Tags {
     /// keyword](https://www.rfc-editor.org/rfc/rfc8457.html).
     ///
     /// * If a mailbox with the `Important` role exists, this is used as the sole source of truth
-    /// when pulling for tagging messages as "important". * If not, the `$Important` keyword is
-    /// considered instead. * In both cases, the `$Important` keyword is set on the server when
-    /// pushing. In the first case, it's also copied to the `Important` mailbox.
+    ///   when pulling for tagging messages as "important". * If not, the `$Important` keyword is
+    ///   considered instead. * In both cases, the `$Important` keyword is set on the server when
+    ///   pushing. In the first case, it's also copied to the `Important` mailbox.
     ///
     /// If set to an empty string, this mailbox, *its child mailboxes*, and this keyword are not
     /// synchronized with a tag.
