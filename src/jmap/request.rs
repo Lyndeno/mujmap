@@ -268,17 +268,17 @@ pub struct MethodCallSet<'a, C> {
     /// update MUST be rejected with an invalidPatch error:
     ///
     /// * The pointer MUST NOT reference inside an array (i.e., you MUST NOT insert/delete from an
-    /// array; the array MUST be replaced in its entirety instead). * All parts prior to the last
-    /// (i.e., the value after the final slash) MUST already exist on the object being patched. *
-    /// There MUST NOT be two patches in the PatchObject where the pointer of one is the prefix of
-    /// the pointer of the other, e.g., “alerts/1/offset” and “alerts”.
+    ///   array; the array MUST be replaced in its entirety instead). * All parts prior to the last
+    ///   (i.e., the value after the final slash) MUST already exist on the object being patched. *
+    ///   There MUST NOT be two patches in the PatchObject where the pointer of one is the prefix of
+    ///   the pointer of the other, e.g., “alerts/1/offset” and “alerts”.
     ///
     /// The value associated with each pointer determines how to apply that patch:
     ///
     /// * If `None`, set to the default value if specified for this property; otherwise, remove the
-    /// property from the patched object. If the key is not present in the parent, this a no-op. *
-    /// Anything else: The value to set for this property (this may be a replacement or addition to
-    /// the object being patched).
+    ///   property from the patched object. If the key is not present in the parent, this a no-op. *
+    ///   Anything else: The value to set for this property (this may be a replacement or addition to
+    ///   the object being patched).
     ///
     /// Any server-set properties MAY be included in the patch if their value is identical to the
     /// current server value (before applying the patches to the object). Otherwise, the update MUST
