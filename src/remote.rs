@@ -38,26 +38,26 @@ pub enum Error {
     #[snafu(display("Could not resolve JMAP SRV record for {}: {}", hostname, source))]
     ResolveJmapSrvRecord {
         hostname: String,
-        source: ureq::Error,
+        source: Box<ureq::Error>,
     },
 
     #[snafu(display("Could not open session at {}: {}", session_url, source))]
     OpenSession {
         session_url: String,
-        source: ureq::Error,
+        source: Box<ureq::Error>,
     },
 
     #[snafu(display("Could not update session at {}: {}", session_url, source))]
     UpdateSession {
         session_url: String,
-        source: ureq::Error,
+        source: Box<ureq::Error>,
     },
 
     #[snafu(display("Session username doesn't match configured username: {}", username))]
     UsernameMismatch { username: String },
 
     #[snafu(display("Could not complete API request: {}", source))]
-    Request { source: ureq::Error },
+    Request { source: Box<ureq::Error> },
 
     #[snafu(display("Could not interpret API response: {}", source))]
     Response { source: io::Error },
@@ -72,7 +72,7 @@ pub enum Error {
     Method { error: jmap::MethodResponseError },
 
     #[snafu(display("Could not read Email blob from server: {}", source))]
-    ReadEmailBlob { source: ureq::Error },
+    ReadEmailBlob { source: Box<ureq::Error> },
 
     #[snafu(display("Could not find an archive mailbox"))]
     NoArchive {},
@@ -127,13 +127,13 @@ impl HttpWrapper {
         }
     }
 
-    fn get_session(&self, session_url: &str) -> Result<(String, jmap::Session), ureq::Error> {
+    fn get_session(&self, session_url: &str) -> Result<(String, jmap::Session), Box<ureq::Error>> {
         let response = self
             .apply_authorization(self.agent.get(session_url))
             .call()?;
 
         let session_url = response.get_url().to_string();
-        let session: jmap::Session = response.into_json()?;
+        let session: jmap::Session = response.into_json().map_err(ureq::Error::from)?;
         Ok((session_url, session))
     }
 
@@ -141,6 +141,7 @@ impl HttpWrapper {
         Ok(self
             .apply_authorization(self.agent.get(url))
             .call()
+            .map_err(|e| e.into())
             .context(ReadEmailBlobSnafu {})?
             .into_reader()
             // Limiting download size as advised by ureq's documentation:
@@ -152,6 +153,7 @@ impl HttpWrapper {
         let post = self
             .apply_authorization(self.agent.post(url))
             .send_string(body)
+            .map_err(|e| e.into())
             .context(RequestSnafu {})?;
         if log_enabled!(log::Level::Trace) {
             let json = post.into_string().context(ResponseSnafu {})?;
@@ -166,6 +168,7 @@ impl HttpWrapper {
         let post = self
             .apply_authorization(self.agent.post(url))
             .send_json(body)
+            .map_err(|e| e.into())
             .context(RequestSnafu {})?;
         if log_enabled!(log::Level::Trace) {
             let json = post.into_string().context(ResponseSnafu {})?;
@@ -312,7 +315,7 @@ impl Remote {
                     req = req.set("Authorization", a);
                 }
 
-                let r = req.call().context(OpenSessionSnafu { session_url })?;
+                let r = req.call().map_err(|e| e.into()).context(OpenSessionSnafu { session_url })?;
                 let session: jmap::Session = r.into_json().context(ResponseSnafu {})?;
                 Ok(Self {
                     http_wrapper: HttpWrapper::new(authorization, timeout),
@@ -321,7 +324,7 @@ impl Remote {
                 })
             }
 
-            Err(e) => Err(e).context(OpenSessionSnafu { session_url }),
+            Err(e) => Err(e.into()).context(OpenSessionSnafu { session_url }),
         }
     }
 
