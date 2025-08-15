@@ -12,8 +12,13 @@
     };
   };
 
-  outputs = { self, nixpkgs, utils, crane, pre-commit-hooks-nix}:
-  let
+  outputs = {
+    self,
+    nixpkgs,
+    utils,
+    crane,
+    pre-commit-hooks-nix,
+  }: let
     systems = [
       "x86_64-linux"
       "aarch64-linux"
@@ -38,7 +43,7 @@
         inherit src;
         strictDeps = true;
 
-        propagatedBuildInputs = [ pkgs.notmuch ];
+        propagatedBuildInputs = [pkgs.notmuch];
       };
 
       cargoArtifacts = craneLib.buildDepsOnly common-args;
