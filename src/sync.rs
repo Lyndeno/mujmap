@@ -249,8 +249,7 @@ pub fn sync(
         |remote: &mut Remote| -> Result<(jmap::State, HashSet<jmap::Id>, HashSet<jmap::Id>)> {
             let (state, updated_ids) = remote.all_email_ids().context(IndexRemoteEmailsSnafu {})?;
             // TODO can we optimize these two lines?
-            let local_ids: HashSet<jmap::Id> =
-                local_emails.keys().cloned().collect();
+            let local_ids: HashSet<jmap::Id> = local_emails.keys().cloned().collect();
             let destroyed_ids = local_ids.difference(&updated_ids).cloned().collect();
             Ok((state, updated_ids, destroyed_ids))
         };
@@ -446,11 +445,9 @@ pub fn sync(
                     .values()
                     .map(|new_email| {
                         let local_email =
-                            local
-                                .add_new_email(new_email)
-                                .context(AddLocalEmailSnafu {
-                                    filename: &new_email.cache_path,
-                                })?;
+                            local.add_new_email(new_email).context(AddLocalEmailSnafu {
+                                filename: &new_email.cache_path,
+                            })?;
                         if let Some(e) = local_emails.get(&new_email.remote_email.id) {
                             // Move the old message to the destroyed emails set.
                             destroyed_local_emails.push(e);
@@ -518,14 +515,11 @@ pub fn sync(
                                 .get_message(&local_email.message_id)
                                 .context(GetNotmuchMessageSnafu {})?
                             {
-                                if let Some(new_maildir_path) = message
-                                    .filenames()
-                                    .find(|f| {
-                                        f.file_name().is_some_and(|p| {
-                                            p.to_string_lossy().starts_with(&*our_filename)
-                                        })
+                                if let Some(new_maildir_path) = message.filenames().find(|f| {
+                                    f.file_name().is_some_and(|p| {
+                                        p.to_string_lossy().starts_with(&*our_filename)
                                     })
-                                {
+                                }) {
                                     new_email.maildir_path = new_maildir_path;
                                 }
                             }

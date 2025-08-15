@@ -315,7 +315,10 @@ impl Remote {
                     req = req.set("Authorization", a);
                 }
 
-                let r = req.call().map_err(|e| e.into()).context(OpenSessionSnafu { session_url })?;
+                let r = req
+                    .call()
+                    .map_err(|e| e.into())
+                    .context(OpenSessionSnafu { session_url })?;
                 let session: jmap::Session = r.into_json().context(ResponseSnafu {})?;
                 Ok(Self {
                     http_wrapper: HttpWrapper::new(authorization, timeout),
