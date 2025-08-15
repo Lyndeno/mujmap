@@ -149,7 +149,7 @@ impl Local {
 
     /// Create a path for a newly added file to the maildir.
     pub fn new_maildir_path(&self, id: &jmap::Id, blob_id: &jmap::Id) -> PathBuf {
-        self.mail_cur_dir.join(format!("{}.{}", id, blob_id))
+        self.mail_cur_dir.join(format!("{id}.{blob_id}"))
     }
 
     /// Return all `Email`s that mujmap owns for this maildir.
@@ -229,7 +229,7 @@ impl Local {
 
     /// Get a notmuch Message object for the wanted id.
     pub fn get_message(&self, id: &str) -> Result<Option<Message>, notmuch::Error> {
-        let query_string = format!("id:{}", id);
+        let query_string = format!("id:{id}");
         let query = self.db.create_query(query_string.as_str())?;
         query.set_omit_excluded(Exclude::False);
         let messages = query.search_messages()?;

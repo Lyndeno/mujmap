@@ -223,7 +223,7 @@ impl Remote {
 
     fn open_host(fqdn: &str, username: &str, password: &str, timeout: u64) -> Result<Self> {
         let resolver = Resolver::from_system_conf().context(ParseResolvConfSnafu {})?;
-        let mut address = format!("_jmap._tcp.{}", fqdn);
+        let mut address = format!("_jmap._tcp.{fqdn}");
         if !address.ends_with(".") {
             address.push('.');
         }
@@ -278,7 +278,7 @@ impl Remote {
                     };
                     format!(
                         "Basic {}",
-                        base64::encode(format!("{}:{}", safe_username, password))
+                        base64::encode(format!("{safe_username}:{password}"))
                     )
                 }
 
@@ -290,7 +290,7 @@ impl Remote {
 
                     Some(v) if v.starts_with("Bearer") => {
                         debug!("server offered Bearer auth");
-                        Some(format!("Bearer {}", password))
+                        Some(format!("Bearer {password}"))
                     }
 
                     // Server didn't offer any auth schemes but still requires authentication.
@@ -781,8 +781,8 @@ impl Remote {
             }
             // Create it!
             let id = create_calls.len();
-            let create_id = Id(format!("{}", id));
-            let ref_id = Id(format!("#{}", id));
+            let create_id = Id(format!("{id}"));
+            let ref_id = Id(format!("#{id}"));
             create_calls.push((
                 create_id,
                 jmap::MailboxCreate {
@@ -849,7 +849,7 @@ impl Remote {
 
         // Insert the newly created mailboxes into the `Mailboxes`.
         for (create_id, invocation) in response.method_responses.into_iter().enumerate() {
-            let invocation_id = format!("{}", create_id);
+            let invocation_id = format!("{create_id}");
             let set = expect_mailbox_set(&invocation_id, invocation)?;
             let mut created = set.created.ok_or(Error::UnexpectedResponse)?;
             let tag = created_tags_by_id[create_id].to_owned();
