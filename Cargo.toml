@@ -1,8 +1,8 @@
 [package]
 name = "mujmap"
 description = "JMAP integration for notmuch mail"
-authors = ["Eliza Velasquez"]
-version = "0.2.0"
+authors = ["Eliza Velasquez", "Lyndon Sanche"]
+version = "0.3.0-dev"
 license = "GPL-3.0"
 keywords = ["notmuch", "mail", "email", "jmap"]
 categories = ["command-line-utilities", "email"]
