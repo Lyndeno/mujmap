@@ -208,14 +208,14 @@ If your 401 errors are unrelated to the above situation, try the following
 steps:
 
 - [ ] Ensure that your mail server supports either HTTP Basic Auth or Bearer
-      token auth.
+  token auth.
 - [ ] Verify that you are using the correct username and password/bearer token.
-      If you are using HTTP Basic Auth, Fastmail requires a special third-party
-      password *specifically for JMAP access*.
+  If you are using HTTP Basic Auth, Fastmail requires a special third-party
+  password *specifically for JMAP access*.
 - [ ] Verify that you are using a `password_command` which prints the correct
-      password to stdout. If the password command fails, mujmap logs its stderr.
+  password to stdout. If the password command fails, mujmap logs its stderr.
 - [ ] If using Fastmail, check your login logs on the website for additional
-      context.
+  context.
 
 ### Invalid cross-device link
 This error will occur if your mail directory is stored on a different device
