@@ -178,16 +178,28 @@ pub struct LatestState {
 impl LatestState {
     fn open(filename: impl AsRef<Path>) -> Result<Self> {
         let filename = filename.as_ref();
-        let file = File::open(filename).map_err(|source| Error::ReadStateFile { filename: filename.into(), source })?;
+        let file = File::open(filename).map_err(|source| Error::ReadStateFile {
+            filename: filename.into(),
+            source,
+        })?;
         let reader = BufReader::new(file);
-        serde_json::from_reader(reader).map_err(|source| Error::ParseStateFile { filename: filename.into(), source })
+        serde_json::from_reader(reader).map_err(|source| Error::ParseStateFile {
+            filename: filename.into(),
+            source,
+        })
     }
 
     fn save(&self, filename: impl AsRef<Path>) -> Result<()> {
         let filename = filename.as_ref();
-        let file = File::create(filename).map_err(|source| Error::CreateStateFile { filename: filename.into(), source })?;
+        let file = File::create(filename).map_err(|source| Error::CreateStateFile {
+            filename: filename.into(),
+            source,
+        })?;
         let writer = BufWriter::new(file);
-        serde_json::to_writer(writer, self).map_err(|source| Error::WriteStateFile { filename: filename.into(), source })
+        serde_json::to_writer(writer, self).map_err(|source| Error::WriteStateFile {
+            filename: filename.into(),
+            source,
+        })
     }
 
     fn empty() -> Self {
@@ -210,12 +222,12 @@ pub fn sync(
     let lock_file_path = mail_dir.join("mujmap.lock");
     let mut lock = LockFile::open(&lock_file_path).map_err(|source| Error::OpenLockFile {
         path: lock_file_path,
-        source
+        source,
     })?;
-    let is_locked = lock.try_lock().map_err(|source| Error::Lock {source})?;
+    let is_locked = lock.try_lock().map_err(|source| Error::Lock { source })?;
     if !is_locked {
         println!("Lock file owned by another process. Waiting...");
-        lock.lock().map_err(|source| Error::Lock {source})?;
+        lock.lock().map_err(|source| Error::Lock { source })?;
     }
 
     // Load the intermediary state.
@@ -226,28 +238,34 @@ pub fn sync(
     });
 
     // Open the local notmuch database.
-    let local = Local::open(mail_dir, args.dry_run || !pull).map_err(|source| Error::OpenLocal {source})?;
+    let local = Local::open(mail_dir, args.dry_run || !pull)
+        .map_err(|source| Error::OpenLocal { source })?;
 
     // Open the local cache.
-    let cache = Cache::open(&local.mail_cur_dir, &config).map_err(|source| Error::OpenCache {source})?;
+    let cache =
+        Cache::open(&local.mail_cur_dir, &config).map_err(|source| Error::OpenCache { source })?;
 
     // Open the remote session.
-    let mut remote = Remote::open(&config).map_err(|source| Error::OpenRemote {source})?;
+    let mut remote = Remote::open(&config).map_err(|source| Error::OpenRemote { source })?;
 
     // List all remote mailboxes and convert them to notmuch tags.
     let mut mailboxes = remote
         .get_mailboxes(&config.tags)
-        .map_err(|source| Error::IndexMailboxes {source})?;
+        .map_err(|source| Error::IndexMailboxes { source })?;
     debug!("Got mailboxes: {:?}", mailboxes);
 
     // Query local database for all email.
-    let local_emails = local.all_emails().map_err(|source| Error::IndexLocalEmails {source})?;
+    let local_emails = local
+        .all_emails()
+        .map_err(|source| Error::IndexLocalEmails { source })?;
 
     // Function which performs a full sync, i.e. a sync which considers all remote IDs as updated,
     // and determines destroyed IDs by finding the difference of all remote IDs from all local IDs.
     let full_sync =
         |remote: &mut Remote| -> Result<(jmap::State, HashSet<jmap::Id>, HashSet<jmap::Id>)> {
-            let (state, updated_ids) = remote.all_email_ids().map_err(|source| Error::IndexRemoteEmails {source})?;
+            let (state, updated_ids) = remote
+                .all_email_ids()
+                .map_err(|source| Error::IndexRemoteEmails { source })?;
             // TODO can we optimize these two lines?
             let local_ids: HashSet<jmap::Id> = local_emails.keys().cloned().collect();
             let destroyed_ids = local_ids.difference(&updated_ids).cloned().collect();
@@ -285,15 +303,18 @@ pub fn sync(
         .unwrap_or_else(|| full_sync(&mut remote))?;
 
     // Retrieve the updated `Email` objects from the server.
-    stdout.set_color(&info_color_spec).map_err(|source| Error::Log {source})?;
-    write!(stdout, "Retrieving metadata...").map_err(|source| Error::Log {source})?;
-    stdout.reset().map_err(|source| Error::Log {source})?;
-    writeln!(stdout, " ({} possibly changed)", updated_ids.len()).map_err(|source| Error::Log {source})?;
-    stdout.flush().map_err(|source| Error::Log {source})?;
+    stdout
+        .set_color(&info_color_spec)
+        .map_err(|source| Error::Log { source })?;
+    write!(stdout, "Retrieving metadata...").map_err(|source| Error::Log { source })?;
+    stdout.reset().map_err(|source| Error::Log { source })?;
+    writeln!(stdout, " ({} possibly changed)", updated_ids.len())
+        .map_err(|source| Error::Log { source })?;
+    stdout.flush().map_err(|source| Error::Log { source })?;
 
     let remote_emails = remote
         .get_emails(updated_ids.iter(), &mailboxes, &config.tags)
-        .map_err(|source| Error::GetRemoteEmails {source})?;
+        .map_err(|source| Error::GetRemoteEmails { source })?;
 
     // Before merging, download the new files into the cache.
     let mut new_emails: HashMap<jmap::Id, NewEmail> = remote_emails
@@ -320,16 +341,18 @@ pub fn sync(
         .collect();
 
     if !new_emails_missing_from_cache.is_empty() {
-        stdout.set_color(&info_color_spec).map_err(|source| Error::Log {source})?;
-        writeln!(stdout, "Downloading new mail...").map_err(|source| Error::Log {source})?;
-        stdout.reset().map_err(|source| Error::Log {source})?;
-        stdout.flush().map_err(|source| Error::Log {source})?;
+        stdout
+            .set_color(&info_color_spec)
+            .map_err(|source| Error::Log { source })?;
+        writeln!(stdout, "Downloading new mail...").map_err(|source| Error::Log { source })?;
+        stdout.reset().map_err(|source| Error::Log { source })?;
+        stdout.flush().map_err(|source| Error::Log { source })?;
 
         let pb = ProgressBar::new(new_emails_missing_from_cache.len() as u64);
         let pool = rayon::ThreadPoolBuilder::new()
             .num_threads(config.concurrent_downloads)
             .build()
-            .map_err(|source| Error::CreateDownloadThreadPool {source})?;
+            .map_err(|source| Error::CreateDownloadThreadPool { source })?;
         let result: Result<Vec<_>, Error> = pool.install(|| {
             new_emails_missing_from_cache
                 .into_par_iter()
@@ -382,16 +405,19 @@ pub fn sync(
     )?;
     let updated_local_emails: HashMap<jmap::Id, local::Email> = local
         .all_emails_since(notmuch_revision)
-        .map_err(|source| Error::IndexLocalUpdatedEmails {source})?
+        .map_err(|source| Error::IndexLocalUpdatedEmails { source })?
         .into_iter()
         // Filter out emails that were destroyed on the server.
         .filter(|(id, _)| !destroyed_ids.contains(id))
         .collect();
 
     if pull {
-        stdout.set_color(&info_color_spec).map_err(|source| Error::Log {source})?;
-        write!(stdout, "Applying changes to notmuch database...").map_err(|source| Error::Log {source})?;
-        stdout.reset().map_err(|source| Error::Log {source})?;
+        stdout
+            .set_color(&info_color_spec)
+            .map_err(|source| Error::Log { source })?;
+        write!(stdout, "Applying changes to notmuch database...")
+            .map_err(|source| Error::Log { source })?;
+        stdout.reset().map_err(|source| Error::Log { source })?;
         writeln!(
             stdout,
             " ({} new, {} changed, {} destroyed)",
@@ -399,8 +425,8 @@ pub fn sync(
             remote_emails.len(),
             destroyed_ids.len()
         )
-        .map_err(|source| Error::Log {source})?;
-        stdout.flush().map_err(|source| Error::Log {source})?;
+        .map_err(|source| Error::Log { source })?;
+        stdout.flush().map_err(|source| Error::Log { source })?;
 
         // Update local messages.
         if !args.dry_run {
@@ -423,34 +449,37 @@ pub fn sync(
                         "File `{}' already existed in maildir but was not indexed. Replacing...",
                         &new_email.maildir_path.to_string_lossy(),
                     );
-                    fs::remove_file(&new_email.maildir_path).map_err(|source| Error::
-                        RemoveUnindexedMailFile {
+                    fs::remove_file(&new_email.maildir_path).map_err(|source| {
+                        Error::RemoveUnindexedMailFile {
                             path: new_email.maildir_path.clone(),
-                            source
-                        },
-                    )?;
+                            source,
+                        }
+                    })?;
                 }
-                symlink_file(&new_email.cache_path, &new_email.maildir_path).map_err(|source| Error::
-                    MakeMaildirSymlink {
+                symlink_file(&new_email.cache_path, &new_email.maildir_path).map_err(|source| {
+                    Error::MakeMaildirSymlink {
                         from: new_email.cache_path.clone(),
                         to: new_email.maildir_path.clone(),
-                        source
-                    },
-                )?;
+                        source,
+                    }
+                })?;
             }
 
             let mut commit_changes = || -> Result<()> {
-                local.begin_atomic().map_err(|source| Error::BeginAtomic {source})?;
+                local
+                    .begin_atomic()
+                    .map_err(|source| Error::BeginAtomic { source })?;
 
                 // ...and add them to the database.
                 let new_local_emails = new_emails
                     .values()
                     .map(|new_email| {
-                        let local_email =
-                            local.add_new_email(new_email).map_err(|source| Error::AddLocalEmail {
+                        let local_email = local.add_new_email(new_email).map_err(|source| {
+                            Error::AddLocalEmail {
                                 filename: new_email.cache_path.clone(),
-                                source
-                            })?;
+                                source,
+                            }
+                        })?;
                         if let Some(e) = local_emails.get(&new_email.remote_email.id) {
                             // Move the old message to the destroyed emails set.
                             destroyed_local_emails.push(e);
@@ -497,7 +526,7 @@ pub fn sync(
 
                     local
                         .update_email_tags(local_email, tags)
-                        .map_err(|source| Error::UpdateLocalEmail {source})?;
+                        .map_err(|source| Error::UpdateLocalEmail { source })?;
 
                     // In `update' notmuch may have renamed the file on disk when setting maildir
                     // flags, so we need to update our idea of the filename to match so that, for
@@ -516,7 +545,7 @@ pub fn sync(
                         {
                             if let Some(message) = local
                                 .get_message(&local_email.message_id)
-                                .map_err(|source| Error::GetNotmuchMessage {source})?
+                                .map_err(|source| Error::GetNotmuchMessage { source })?
                             {
                                 if let Some(new_maildir_path) = message.filenames().find(|f| {
                                     f.file_name().is_some_and(|p| {
@@ -534,10 +563,12 @@ pub fn sync(
                 for destroyed_local_email in &destroyed_local_emails {
                     local
                         .remove_email(destroyed_local_email)
-                        .map_err(|source| Error::RemoveLocalEmail {source})?;
+                        .map_err(|source| Error::RemoveLocalEmail { source })?;
                 }
 
-                local.end_atomic().map_err(|source| Error::EndAtomic {source})?;
+                local
+                    .end_atomic()
+                    .map_err(|source| Error::EndAtomic { source })?;
                 Ok(())
             };
 
@@ -569,20 +600,22 @@ pub fn sync(
                     &new_email.cache_path.to_string_lossy(),
                     &new_email.maildir_path.to_string_lossy(),
                 );
-                fs::rename(&new_email.cache_path, &new_email.maildir_path).map_err(|source| Error::
-                    RenameMailFile {
+                fs::rename(&new_email.cache_path, &new_email.maildir_path).map_err(|source| {
+                    Error::RenameMailFile {
                         from: new_email.cache_path.clone(),
                         to: new_email.maildir_path.clone(),
-                        source
-                    },
-                )?;
+                        source,
+                    }
+                })?;
             }
 
             // Delete the destroyed email files.
             for destroyed_local_email in &destroyed_local_emails {
-                fs::remove_file(&destroyed_local_email.path).map_err(|source| Error::RemoveMailFile {
-                    path: destroyed_local_email.path.clone(),
-                    source
+                fs::remove_file(&destroyed_local_email.path).map_err(|source| {
+                    Error::RemoveMailFile {
+                        path: destroyed_local_email.path.clone(),
+                        source,
+                    }
                 })?;
             }
         }
@@ -592,7 +625,7 @@ pub fn sync(
         // Ensure that for every tag, there exists a corresponding mailbox.
         let tags_with_missing_mailboxes: Vec<String> = local
             .all_tags()
-            .map_err(|source| Error::IndexTags {source})?
+            .map_err(|source| Error::IndexTags { source })?
             .filter(|tag| {
                 let tag = tag.as_str();
                 // Any tags which *can* be mapped to a keyword do not require a mailbox.
@@ -626,22 +659,25 @@ pub fn sync(
                 .create_mailboxes(&mut mailboxes, &tags_with_missing_mailboxes, &config.tags)
                 .map_err(|source| Error::CreateMailboxes {
                     tags: tags_with_missing_mailboxes,
-                    source
+                    source,
                 })?;
         }
     }
 
     // Update remote messages.
-    stdout.set_color(&info_color_spec).map_err(|source| Error::Log {source})?;
-    write!(stdout, "Applying changes to JMAP server...").map_err(|source| Error::Log {source})?;
-    stdout.reset().map_err(|source| Error::Log {source})?;
-    writeln!(stdout, " ({} changed)", updated_local_emails.len()).map_err(|source| Error::Log {source})?;
-    stdout.flush().map_err(|source| Error::Log {source})?;
+    stdout
+        .set_color(&info_color_spec)
+        .map_err(|source| Error::Log { source })?;
+    write!(stdout, "Applying changes to JMAP server...").map_err(|source| Error::Log { source })?;
+    stdout.reset().map_err(|source| Error::Log { source })?;
+    writeln!(stdout, " ({} changed)", updated_local_emails.len())
+        .map_err(|source| Error::Log { source })?;
+    stdout.flush().map_err(|source| Error::Log { source })?;
 
     if !args.dry_run {
         remote
             .update(&updated_local_emails, &mailboxes, &config.tags)
-            .map_err(|source| Error::PushChanges {source})?;
+            .map_err(|source| Error::PushChanges { source })?;
     }
 
     if !args.dry_run {
@@ -669,10 +705,10 @@ fn download(
     let remote_email = new_email.remote_email;
     let reader = remote
         .read_email_blob(&remote_email.blob_id)
-        .map_err(|source| Error::DownloadRemoteEmail {source})?;
+        .map_err(|source| Error::DownloadRemoteEmail { source })?;
     cache
         .download_into_cache(new_email, reader, convert_dos_to_unix)
-        .map_err(|source| Error::CacheNewEmail {source})?;
+        .map_err(|source| Error::CacheNewEmail { source })?;
     Ok(())
 }
 

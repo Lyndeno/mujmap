@@ -101,20 +101,23 @@ impl Local {
             None,
             None,
         )
-        .map_err(|source| Error::OpenDatabase {source})?;
+        .map_err(|source| Error::OpenDatabase { source })?;
 
         // Get the relative directory of the maildir to the database path.
-        let canonical_db_path = db.path().canonicalize().map_err(|source| Error::Canonicalize {source})?;
+        let canonical_db_path = db
+            .path()
+            .canonicalize()
+            .map_err(|source| Error::Canonicalize { source })?;
         let canonical_mail_dir_path = mail_dir
             .as_ref()
             .canonicalize()
-            .map_err(|source| Error::Canonicalize {source})?;
+            .map_err(|source| Error::Canonicalize { source })?;
         let relative_mail_dir = canonical_mail_dir_path
             .strip_prefix(&canonical_db_path)
             .map_err(|source| Error::MailDirNotASubdirOfNotmuchRoot {
                 mail_dir: canonical_mail_dir_path.clone(),
                 notmuch_root: canonical_db_path.clone(),
-                source
+                source,
             })?;
 
         // Build the query to search for all mail in our maildir.
@@ -128,7 +131,10 @@ impl Local {
                 &canonical_mail_dir_path.join("new"),
                 &canonical_mail_dir_path.join("tmp"),
             ] {
-                fs::create_dir_all(path).map_err(|source| Error::CreateMaildirDir { path: path.into(), source })?;
+                fs::create_dir_all(path).map_err(|source| Error::CreateMaildirDir {
+                    path: path.into(),
+                    source,
+                })?;
             }
         }
 
@@ -212,14 +218,14 @@ impl Local {
                 .create_query(query_string)
                 .map_err(|source| Error::CreateNotmuchQuery {
                     query: query_string.into(),
-                    source
+                    source,
                 })?;
         query.set_omit_excluded(Exclude::False);
         let messages = query
             .search_messages()
             .map_err(|source| Error::ExecuteNotmuchQuery {
                 query: query_string.into(),
-                source
+                source,
             })?;
         Ok(messages
             .into_iter()

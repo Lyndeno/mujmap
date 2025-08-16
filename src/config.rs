@@ -264,14 +264,16 @@ fn default_convert_dos_to_unix() -> bool {
 
 impl Config {
     pub fn from_file(path: impl AsRef<Path>) -> Result<Self> {
-        let contents = fs::read_to_string(path.as_ref()).map_err(|source| Error::ReadConfigFile {
-            filename: path.as_ref().into(),
-            source
-        })?;
-        let config: Self = toml::from_str(contents.as_str()).map_err(|source| Error::ParseConfigFile {
-            filename: path.as_ref().into(),
-            source
-        })?;
+        let contents =
+            fs::read_to_string(path.as_ref()).map_err(|source| Error::ReadConfigFile {
+                filename: path.as_ref().into(),
+                source,
+            })?;
+        let config: Self =
+            toml::from_str(contents.as_str()).map_err(|source| Error::ParseConfigFile {
+                filename: path.as_ref().into(),
+                source,
+            })?;
 
         // Perform final validation.
         if (config.fqdn.is_some() && config.session_url.is_some()) {
@@ -291,7 +293,7 @@ impl Config {
             .arg("-c")
             .arg(self.password_command.as_str())
             .output()
-            .map_err(|source| Error::ExecutePasswordCommand {source})?;
+            .map_err(|source| Error::ExecutePasswordCommand { source })?;
         if !output.status.success() {
             Err(Error::PasswordCommandStatus {
                 status: output.status,
@@ -299,7 +301,8 @@ impl Config {
                     .unwrap_or_else(|e| format!("<utf-8 decode error: {e}>")),
             })?
         };
-        let stdout = String::from_utf8(output.stdout).map_err(|source| Error::DecodePasswordCommand {source})?;
+        let stdout = String::from_utf8(output.stdout)
+            .map_err(|source| Error::DecodePasswordCommand { source })?;
         Ok(stdout.trim().to_string())
     }
 }

@@ -63,7 +63,10 @@ impl Cache {
         };
 
         // Ensure the cache dir exists.
-        fs::create_dir_all(cache_dir).map_err(|source| Error::CreateCacheDir { path: cache_dir.into(), source })?;
+        fs::create_dir_all(cache_dir).map_err(|source| Error::CreateCacheDir {
+            path: cache_dir.into(),
+            source,
+        })?;
 
         // Create the cache filename prefix for this particular maildir. More information about this
         // is found in the documentation for `Local::cached_file_prefix`.
@@ -107,17 +110,18 @@ impl Cache {
             self.cached_file_prefix,
             rayon::current_thread_index().unwrap_or(0)
         ));
-        let mut writer = File::create(&temporary_file_path).map_err(|source| Error::CreateMailFile {
-            path: temporary_file_path.clone(),
-            source
-        })?;
+        let mut writer =
+            File::create(&temporary_file_path).map_err(|source| Error::CreateMailFile {
+                path: temporary_file_path.clone(),
+                source,
+            })?;
         if convert_dos_to_unix {
-            loe::process(&mut reader, &mut writer, loe::Config::default()).map_err(|source|
+            loe::process(&mut reader, &mut writer, loe::Config::default()).map_err(|source| {
                 Error::CreateUnixMailFile {
                     path: temporary_file_path.clone(),
-                    source
-                },
-            )?;
+                    source,
+                }
+            })?;
         } else {
             io::copy(&mut reader, &mut writer).map_err(|source| Error::CreateMailFile {
                 path: temporary_file_path.clone(),
@@ -125,10 +129,12 @@ impl Cache {
             })?;
         }
         // ...and move to its proper location.
-        fs::rename(&temporary_file_path, &new_email.cache_path).map_err(|source| Error::RenameMailFile {
-            from: temporary_file_path,
-            to: new_email.cache_path.clone(),
-            source,
+        fs::rename(&temporary_file_path, &new_email.cache_path).map_err(|source| {
+            Error::RenameMailFile {
+                from: temporary_file_path,
+                to: new_email.cache_path.clone(),
+                source,
+            }
         })?;
         Ok(())
     }

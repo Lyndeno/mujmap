@@ -66,19 +66,20 @@ pub fn send(read_recipients: bool, recipients: Vec<String>, config: Config) -> R
         &mut stdio_crlf,
         loe::Config::default().transform(loe::TransformMode::Crlf),
     )
-    .map_err(|source| Error::ReadStdin {source})?;
+    .map_err(|source| Error::ReadStdin { source })?;
 
-    let email_string = String::from_utf8(stdio_crlf.into_inner()).map_err(|source| Error::ReadCrlfStdin {source})?;
-    let parsed_email =
-        email_parser::email::Email::parse(email_string.as_bytes()).map_err(|source| Error::ParseEmail {source})?;
+    let email_string = String::from_utf8(stdio_crlf.into_inner())
+        .map_err(|source| Error::ReadCrlfStdin { source })?;
+    let parsed_email = email_parser::email::Email::parse(email_string.as_bytes())
+        .map_err(|source| Error::ParseEmail { source })?;
 
-    let mut remote = Remote::open(&config).map_err(|source| Error::OpenRemote {source})?;
+    let mut remote = Remote::open(&config).map_err(|source| Error::OpenRemote { source })?;
 
     let identity_id =
         get_identity_id_for_sender_address(&parsed_email.sender.address, &mut remote)?;
     let mailboxes = remote
         .get_mailboxes(&config.tags)
-        .map_err(|source| Error::IndexMailboxes {source})?;
+        .map_err(|source| Error::IndexMailboxes { source })?;
 
     let from_address = address_to_string(&parsed_email.sender.address);
     let addresses_to_iter = |a| {
@@ -132,7 +133,7 @@ pub fn send(read_recipients: bool, recipients: Vec<String>, config: Config) -> R
             &to_addresses,
             &email_string,
         )
-        .map_err(|source| Error::SendEmail {source})?;
+        .map_err(|source| Error::SendEmail { source })?;
 
     Ok(())
 }
@@ -143,17 +144,20 @@ fn get_identity_id_for_sender_address(
 ) -> Result<jmap::Id> {
     let sender_local_part = &sender_address.local_part;
     let sender_domain = &sender_address.domain;
-    let sender_fqdn = FQDN::from_str(sender_domain.as_ref()).map_err(|source| Error::ParseSenderDomain {
-        domain: sender_domain.as_ref().into(),
-        source
-    })?;
+    let sender_fqdn =
+        FQDN::from_str(sender_domain.as_ref()).map_err(|source| Error::ParseSenderDomain {
+            domain: sender_domain.as_ref().into(),
+            source,
+        })?;
     debug!(
         "Sender is `{}@{}', fqdn `{}'",
         sender_local_part, sender_domain, sender_fqdn
     );
 
     // Find the identity which matches the sender of this email.
-    let identities = remote.get_identities().map_err(|source| Error::GetIdentities {source})?;
+    let identities = remote
+        .get_identities()
+        .map_err(|source| Error::GetIdentities { source })?;
     let sender_identities: Vec<_> = identities
         .iter()
         .map(|identity| {
@@ -164,7 +168,10 @@ fn get_identity_id_for_sender_address(
                     .ok_or(Error::InvalidEmailAddress {
                         address: identity.email.clone(),
                     })?;
-            let fqdn = FQDN::from_str(domain).map_err(|source| Error::ParseIdentityDomain { domain: domain.into(), source })?;
+            let fqdn = FQDN::from_str(domain).map_err(|source| Error::ParseIdentityDomain {
+                domain: domain.into(),
+                source,
+            })?;
             Ok((identity, local_part, fqdn))
         })
         .collect::<Result<Vec<_>>>()?
