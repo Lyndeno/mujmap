@@ -14,87 +14,86 @@ use lazy_static::lazy_static;
 use log::{debug, log_enabled, trace, warn};
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
-use snafu::prelude::*;
 use trust_dns_resolver::{error::ResolveError, Resolver};
 use uritemplate::UriTemplate;
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[snafu(display("Could not get password from config: {}", source))]
+    #[error("Could not get password from config: {}", source)]
     GetPassword { source: config::Error },
 
-    #[snafu(display("Couldn't determine domain name from `username`"))]
+    #[error("Couldn't determine domain name from `username`")]
     NoDomainName {},
 
-    #[snafu(display("Could not determine DNS settings from resolv.conf: {}", source))]
+    #[error("Could not determine DNS settings from resolv.conf: {}", source)]
     ParseResolvConf { source: io::Error },
 
-    #[snafu(display("Could not lookup SRV address `{}': {}", address, source))]
+    #[error("Could not lookup SRV address `{}': {}", address, source)]
     SrvLookup {
         address: String,
         source: ResolveError,
     },
 
-    #[snafu(display("Could not resolve JMAP SRV record for {}: {}", hostname, source))]
+    #[error("Could not resolve JMAP SRV record for {}: {}", hostname, source)]
     ResolveJmapSrvRecord {
         hostname: String,
         source: Box<ureq::Error>,
     },
 
-    #[snafu(display("Could not open session at {}: {}", session_url, source))]
+    #[error("Could not open session at {}: {}", session_url, source)]
     OpenSession {
         session_url: String,
         source: Box<ureq::Error>,
     },
 
-    #[snafu(display("Could not update session at {}: {}", session_url, source))]
+    #[error("Could not update session at {}: {}", session_url, source)]
     UpdateSession {
         session_url: String,
         source: Box<ureq::Error>,
     },
 
-    #[snafu(display("Session username doesn't match configured username: {}", username))]
+    #[error("Session username doesn't match configured username: {}", username)]
     UsernameMismatch { username: String },
 
-    #[snafu(display("Could not complete API request: {}", source))]
+    #[error("Could not complete API request: {}", source)]
     Request { source: Box<ureq::Error> },
 
-    #[snafu(display("Could not interpret API response: {}", source))]
+    #[error("Could not interpret API response: {}", source)]
     Response { source: io::Error },
 
-    #[snafu(display("Could not deserialize API response: {}", source))]
+    #[error("Could not deserialize API response: {}", source)]
     DeserializeResponse { source: serde_json::Error },
 
-    #[snafu(display("Unexpected response from server"))]
+    #[error("Unexpected response from server")]
     UnexpectedResponse,
 
-    #[snafu(display("Method-level JMAP error: {:?}", error))]
+    #[error("Method-level JMAP error: {:?}", error)]
     Method { error: jmap::MethodResponseError },
 
-    #[snafu(display("Could not read Email blob from server: {}", source))]
+    #[error("Could not read Email blob from server: {}", source)]
     ReadEmailBlob { source: Box<ureq::Error> },
 
-    #[snafu(display("Could not find an archive mailbox"))]
+    #[error("Could not find an archive mailbox")]
     NoArchive {},
 
-    #[snafu(display("Mailbox contained an invalid path"))]
+    #[error("Mailbox contained an invalid path")]
     InvalidMailboxPath {},
 
-    #[snafu(display("Failed to update messages on server: {:?}", not_updated))]
+    #[error("Failed to update messages on server: {:?}", not_updated)]
     UpdateEmail {
         not_updated: HashMap<jmap::Id, jmap::MethodResponseError>,
     },
 
-    #[snafu(display("Failed to import email: {}", source))]
+    #[error("Failed to import email: {}", source)]
     ImportEmail { source: jmap::MethodResponseError },
 
-    #[snafu(display("Failed to destroy email: {}", source))]
+    #[error("Failed to destroy email: {}", source)]
     DestroyEmail { source: jmap::MethodResponseError },
 
-    #[snafu(display("Failed to create email submission: {}", source))]
+    #[error("Failed to create email submission: {}", source)]
     CreateEmailSubmission { source: jmap::MethodResponseError },
 
-    #[snafu(display("Failed to update submitted email: {}", source))]
+    #[error("Failed to update submitted email: {}", source)]
     UpdateSubmittedEmail { source: jmap::MethodResponseError },
 }
 
@@ -142,7 +141,7 @@ impl HttpWrapper {
             .apply_authorization(self.agent.get(url))
             .call()
             .map_err(|e| e.into())
-            .context(ReadEmailBlobSnafu {})?
+            .map_err(|source| Error::ReadEmailBlob {source})?
             .into_reader()
             // Limiting download size as advised by ureq's documentation:
             // https://docs.rs/ureq/latest/ureq/struct.Response.html#method.into_reader
@@ -154,13 +153,13 @@ impl HttpWrapper {
             .apply_authorization(self.agent.post(url))
             .send_string(body)
             .map_err(|e| e.into())
-            .context(RequestSnafu {})?;
+            .map_err(|source| Error::Request {source})?;
         if log_enabled!(log::Level::Trace) {
-            let json = post.into_string().context(ResponseSnafu {})?;
+            let json = post.into_string().map_err(|source| Error::Response {source})?;
             trace!("Post response: {json}");
-            serde_json::from_str(&json).context(DeserializeResponseSnafu {})
+            serde_json::from_str(&json).map_err(|source| Error::DeserializeResponse {source})
         } else {
-            post.into_json().context(ResponseSnafu {})
+            post.into_json().map_err(|source| Error::Response {source})
         }
     }
 
@@ -169,13 +168,13 @@ impl HttpWrapper {
             .apply_authorization(self.agent.post(url))
             .send_json(body)
             .map_err(|e| e.into())
-            .context(RequestSnafu {})?;
+            .map_err(|source| Error::Request {source})?;
         if log_enabled!(log::Level::Trace) {
-            let json = post.into_string().context(ResponseSnafu {})?;
+            let json = post.into_string().map_err(|source| Error::Response {source})?;
             trace!("Post response: {json}");
-            serde_json::from_str(&json).context(DeserializeResponseSnafu {})
+            serde_json::from_str(&json).map_err(|source| Error::DeserializeResponse {source})
         } else {
-            post.into_json().context(ResponseSnafu {})
+            post.into_json().map_err(|source| Error::Response {source})
         }
     }
 }
@@ -190,7 +189,7 @@ pub struct Remote {
 
 impl Remote {
     pub fn open(config: &Config) -> Result<Self> {
-        let password = config.password().context(GetPasswordSnafu {})?;
+        let password = config.password().map_err(|source| Error::GetPassword {source})?;
 
         let remote = match (&config.fqdn, &config.session_url) {
             (Some(fqdn), _) => {
@@ -206,30 +205,29 @@ impl Remote {
                 let (_, domain) = config
                     .username
                     .split_once('@')
-                    .context(NoDomainNameSnafu {})?;
+                    .ok_or(Error::NoDomainName {})?;
                 Self::open_host(domain, config.username.as_str(), &password, config.timeout)
             }
         }?;
 
-        ensure!(
-            remote.session.username == config.username,
-            UsernameMismatchSnafu {
-                username: remote.session.username
-            }
-        );
+        if remote.session.username != config.username {
+            Err(Error::UsernameMismatch {
+                username: remote.session.username.clone()
+            })?
+        };
 
         Ok(remote)
     }
 
     fn open_host(fqdn: &str, username: &str, password: &str, timeout: u64) -> Result<Self> {
-        let resolver = Resolver::from_system_conf().context(ParseResolvConfSnafu {})?;
+        let resolver = Resolver::from_system_conf().map_err(|source| Error::ParseResolvConf {source})?;
         let mut address = format!("_jmap._tcp.{fqdn}");
         if !address.ends_with(".") {
             address.push('.');
         }
         let resolver_response = resolver
             .srv_lookup(address.as_str())
-            .context(SrvLookupSnafu { address })?;
+            .map_err(|source| Error::SrvLookup { address, source })?;
 
         // Try all SRV names in order of priority.
         let mut last_err = None;
@@ -262,7 +260,7 @@ impl Remote {
             Ok(r) => {
                 // Server returned success without authentication. Surprising, but valid.
                 let session_url = r.get_url().to_string();
-                let session: jmap::Session = r.into_json().context(ResponseSnafu {})?;
+                let session: jmap::Session = r.into_json().map_err(|source| Error::Response {source})?;
                 Ok(Self {
                     http_wrapper: HttpWrapper::new(None, timeout),
                     session_url,
@@ -318,8 +316,8 @@ impl Remote {
                 let r = req
                     .call()
                     .map_err(|e| e.into())
-                    .context(OpenSessionSnafu { session_url })?;
-                let session: jmap::Session = r.into_json().context(ResponseSnafu {})?;
+                    .map_err(|source| Error::OpenSession { session_url: session_url.into(), source })?;
+                let session: jmap::Session = r.into_json().map_err(|source| Error::Response {source})?;
                 Ok(Self {
                     http_wrapper: HttpWrapper::new(authorization, timeout),
                     session_url: url.to_string(),
@@ -327,7 +325,7 @@ impl Remote {
                 })
             }
 
-            Err(e) => Err(e.into()).context(OpenSessionSnafu { session_url }),
+            Err(e) => Err(e.into()).map_err(|source| Error::OpenSession { session_url: session_url.into(), source }),
         }
     }
 
@@ -655,7 +653,9 @@ impl Remote {
                 let mut maybe_parent_id = &jmap_mailbox.parent_id;
                 while let Some(parent_id) = maybe_parent_id {
                     // Make sure there isn't a loop.
-                    ensure!(!path_ids.contains(&parent_id), InvalidMailboxPathSnafu {});
+                    if path_ids.contains(&parent_id) {
+                        Err(Error::InvalidMailboxPath {})?
+                    }
                     path_ids.push(parent_id);
                     let parent = jmap_mailboxes
                         .get(parent_id)
@@ -1146,11 +1146,11 @@ impl Remote {
         let import_response =
             expect_email_import(IMPORT_EMAIL_METHOD_ID, response.method_responses.remove(0))?;
         map_first_method_error_into_result(import_response.not_created)
-            .context(ImportEmailSnafu {})?;
+            .map_err(|source| Error::ImportEmail {source})?;
         let imported_email_id = import_response
             .created
             .and_then(|x| x.into_values().map(|object| object.id).next())
-            .context(UnexpectedResponseSnafu {})?;
+            .ok_or(Error::UnexpectedResponse {})?;
 
         // Verify that the rest of the submission succeeded. If it doesn't, we destroy the draft we
         // just uploaded.
@@ -1163,7 +1163,7 @@ impl Remote {
                 response.method_responses.remove(0),
             )?;
             map_first_method_error_into_result(set_email_submission_response.not_created)
-                .context(CreateEmailSubmissionSnafu {})?;
+                .map_err(|source| Error::CreateEmailSubmission {source})?;
 
             if response.method_responses.is_empty() {
                 return Err(Error::UnexpectedResponse);
@@ -1173,7 +1173,7 @@ impl Remote {
                 response.method_responses.remove(0),
             )?;
             map_first_method_error_into_result(set_email_response.not_created)
-                .context(UpdateSubmittedEmailSnafu {})?;
+                .map_err(|source| Error::UpdateSubmittedEmail {source})?;
 
             Ok(())
         };
@@ -1216,7 +1216,7 @@ impl Remote {
 
         let set_response = expect_email_set(SET_METHOD_ID, response.method_responses.remove(0))?;
         map_first_method_error_into_result(set_response.not_destroyed)
-            .context(DestroyEmailSnafu {})?;
+            .map_err(|source| Error::DestroyEmail {source})?;
 
         Ok(())
     }
@@ -1243,8 +1243,9 @@ impl Remote {
             let (_, session) =
                 self.http_wrapper
                     .get_session(&self.session_url)
-                    .context(UpdateSessionSnafu {
-                        session_url: &self.session_url,
+                    .map_err(|source| Error::UpdateSession {
+                        session_url: self.session_url.clone(),
+                        source
                     })?;
             self.session = session;
             trace!("new session state is {}", self.session.state);
