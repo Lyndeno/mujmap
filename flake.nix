@@ -10,6 +10,11 @@
       url = "github:cachix/pre-commit-hooks.nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    nix-github-actions = {
+      url = "github:nix-community/nix-github-actions";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = {
@@ -18,6 +23,7 @@
     utils,
     crane,
     pre-commit-hooks-nix,
+    nix-github-actions,
   }: let
     systems = [
       "x86_64-linux"
@@ -90,8 +96,8 @@
       devShells.default = let
         checks = pre-commit-check {
           alejandra.enable = true;
-          #rustfmt.enable = true;
-          #clippy.enable = true;
+          rustfmt.enable = true;
+          clippy.enable = true;
         };
       in
         craneLib.devShell {
@@ -108,5 +114,6 @@
       hydraJobs = {
         inherit (self) checks packages devShells;
       };
+      githubActions = nix-github-actions.lib.mkGithubMatrix {inherit (self) checks;};
     };
 }
