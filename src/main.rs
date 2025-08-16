@@ -23,22 +23,22 @@ use clap::Parser;
 use config::Config;
 use log::debug;
 use send::send;
-use snafu::prelude::*;
 use std::path::PathBuf;
 use std::{env, io::Write};
 use sync::sync;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
+use thiserror::Error;
 
-#[derive(Debug, Snafu)]
+#[derive(Error, Debug)]
 pub enum Error {
-    #[snafu(display("Could not open config file: {}", source))]
-    OpenConfigFile { source: config::Error },
+    #[error("Could not open config file: {0}")]
+    OpenConfigFile(#[from] config::Error),
 
-    #[snafu(display("Could not sync mail: {}", source))]
-    Sync { source: sync::Error },
+    #[error("Could not sync mail: {0}")]
+    Sync(#[from] sync::Error),
 
-    #[snafu(display("Could not send mail: {}", source))]
-    Send { source: send::Error },
+    #[error("Could not send mail: {0}")]
+    Send(#[from] send::Error),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -63,7 +63,7 @@ fn try_main(stdout: &mut StandardStream) -> Result<(), Error> {
     // Determine working directory and load all data files.
     let mail_dir = args.path.clone().unwrap_or_else(|| PathBuf::from("."));
 
-    let config = Config::from_file(mail_dir.join("mujmap.toml")).context(OpenConfigFileSnafu {})?;
+    let config = Config::from_file(mail_dir.join("mujmap.toml"))?;
     debug!("Using config: {:?}", config);
 
     match args.command {
@@ -74,8 +74,7 @@ fn try_main(stdout: &mut StandardStream) -> Result<(), Error> {
             args,
             config,
             /*pull=*/ false,
-        )
-        .context(SyncSnafu {}),
+        )?,
         args::Command::Sync => sync(
             stdout,
             info_color_spec,
@@ -83,14 +82,14 @@ fn try_main(stdout: &mut StandardStream) -> Result<(), Error> {
             args,
             config,
             /*pull=*/ true,
-        )
-        .context(SyncSnafu {}),
+        )?,
         args::Command::Send {
             read_recipients,
             recipients,
             ..
-        } => send(read_recipients, recipients, config).context(SendSnafu {}),
-    }
+        } => send(read_recipients, recipients, config)?,
+    };
+    Ok(())
 }
 
 fn main() {

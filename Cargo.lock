@@ -34,7 +34,7 @@ checksum = "76464446b8bc32758d7e88ee1a804d9914cd9b1cb264c029899680b0be29826f"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn",
+ "syn 1.0.99",
 ]
 
 [[package]]
@@ -148,7 +148,7 @@ dependencies = [
  "proc-macro-error",
  "proc-macro2",
  "quote",
- "syn",
+ "syn 1.0.99",
 ]
 
 [[package]]
@@ -268,7 +268,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "strsim 0.9.3",
- "syn",
+ "syn 1.0.99",
 ]
 
 [[package]]
@@ -279,7 +279,7 @@ checksum = "d9b5a2f4ac4969822c62224815d069952656cadc7084fdca9751e6d959189b72"
 dependencies = [
  "darling_core",
  "quote",
- "syn",
+ "syn 1.0.99",
 ]
 
 [[package]]
@@ -341,7 +341,7 @@ dependencies = [
  "heck 0.4.0",
  "proc-macro2",
  "quote",
- "syn",
+ "syn 1.0.99",
 ]
 
 [[package]]
@@ -409,7 +409,7 @@ dependencies = [
  "darling",
  "proc-macro2",
  "quote",
- "syn",
+ "syn 1.0.99",
 ]
 
 [[package]]
@@ -733,6 +733,7 @@ dependencies = [
  "snafu",
  "symlink",
  "termcolor",
+ "thiserror 2.0.14",
  "toml",
  "trust-dns-resolver",
  "ureq",
@@ -833,7 +834,7 @@ dependencies = [
  "proc-macro-error-attr",
  "proc-macro2",
  "quote",
- "syn",
+ "syn 1.0.99",
  "version_check",
 ]
 
@@ -850,9 +851,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.43"
+version = "1.0.97"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a2ca2c61bc9f3d74d2886294ab7b9853abd9c1ad903a3ac7815c58989bb7bab"
+checksum = "d61789d7719defeb74ea5fe81f2fdfdbd28a803847077cecce2ff14e1472f6f1"
 dependencies = [
  "unicode-ident",
 ]
@@ -865,9 +866,9 @@ checksum = "a1d01941d82fa2ab50be1e79e6714289dd7cde78eba4c074bc5a4374f650dfe0"
 
 [[package]]
 name = "quote"
-version = "1.0.18"
+version = "1.0.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1feb54ed693b93a84e14094943b84b7c4eae204c512b7ccb95ab0c66d278ad1"
+checksum = "1885c039570dc00dcb4ff087a89e185fd56bae234ddc7f056a945bf36467248d"
 dependencies = [
  "proc-macro2",
 ]
@@ -943,7 +944,7 @@ checksum = "b033d837a7cf162d7993aded9304e30a83213c648b6e389db233191f891e5c2b"
 dependencies = [
  "getrandom",
  "redox_syscall",
- "thiserror",
+ "thiserror 1.0.31",
 ]
 
 [[package]]
@@ -1039,7 +1040,7 @@ checksum = "08597e7152fcd306f41838ed3e37be9eaeed2b61c42e2117266a554fab4662f9"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn",
+ "syn 1.0.99",
 ]
 
 [[package]]
@@ -1087,7 +1088,7 @@ dependencies = [
  "heck 0.3.3",
  "proc-macro2",
  "quote",
- "syn",
+ "syn 1.0.99",
 ]
 
 [[package]]
@@ -1142,6 +1143,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "syn"
+version = "2.0.105"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7bc3fcb250e53458e712715cf74285c1f889686520d79294a9ef3bd7aa1fc619"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "unicode-ident",
+]
+
+[[package]]
 name = "termcolor"
 version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1181,7 +1193,16 @@ version = "1.0.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bd829fe32373d27f76265620b5309d0340cb8550f523c1dda251d6298069069a"
 dependencies = [
- "thiserror-impl",
+ "thiserror-impl 1.0.31",
+]
+
+[[package]]
+name = "thiserror"
+version = "2.0.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b0949c3a6c842cbde3f1686d6eea5a010516deb7085f79db747562d4102f41e"
+dependencies = [
+ "thiserror-impl 2.0.14",
 ]
 
 [[package]]
@@ -1192,7 +1213,18 @@ checksum = "0396bc89e626244658bef819e22d0cc459e795a5ebe878e6ec336d1674a8d79a"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn",
+ "syn 1.0.99",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "2.0.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cc5b44b4ab9c2fdd0e0512e6bece8388e214c0749f5862b114cc5b7a25daf227"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.105",
 ]
 
 [[package]]
@@ -1256,7 +1288,7 @@ dependencies = [
  "log",
  "rand",
  "smallvec",
- "thiserror",
+ "thiserror 1.0.31",
  "tinyvec",
  "tokio",
  "url",
@@ -1277,7 +1309,7 @@ dependencies = [
  "parking_lot",
  "resolv-conf",
  "smallvec",
- "thiserror",
+ "thiserror 1.0.31",
  "tokio",
  "trust-dns-proto",
 ]
@@ -1412,7 +1444,7 @@ dependencies = [
  "log",
  "proc-macro2",
  "quote",
- "syn",
+ "syn 1.0.99",
  "wasm-bindgen-shared",
 ]
 
@@ -1434,7 +1466,7 @@ checksum = "99ec0dc7a4756fffc231aab1b9f2f578d23cd391390ab27f952ae0c9b3ece20b"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn",
+ "syn 1.0.99",
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
 ]
