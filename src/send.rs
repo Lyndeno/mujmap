@@ -1,7 +1,6 @@
 use either::Either;
 use fqdn::FQDN;
 use log::{debug, warn};
-use snafu::prelude::*;
 use std::{
     collections::HashSet,
     io::{Cursor, Read},
@@ -16,42 +15,42 @@ use crate::{
     remote::{self, Remote},
 };
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[snafu(display("Could not read mail from stdin: {}", source))]
+    #[error("Could not read mail from stdin: {}", source)]
     ReadStdin { source: loe::ParseError },
 
-    #[snafu(display("Could not read mail from CRLF stdin buffer: {}", source))]
+    #[error("Could not read mail from CRLF stdin buffer: {}", source)]
     ReadCrlfStdin { source: FromUtf8Error },
 
-    #[snafu(display("Could not parse mail: {}", source))]
+    #[error("Could not parse mail: {}", source)]
     ParseEmail { source: email_parser::error::Error },
 
-    #[snafu(display("Could not parse sender domain: {}", source))]
+    #[error("Could not parse sender domain: {}", source)]
     ParseSenderDomain { domain: String, source: fqdn::Error },
 
-    #[snafu(display("Could not open remote session: {}", source))]
+    #[error("Could not open remote session: {}", source)]
     OpenRemote { source: remote::Error },
 
-    #[snafu(display("Could not enumerate identities: {}", source))]
+    #[error("Could not enumerate identities: {}", source)]
     GetIdentities { source: remote::Error },
 
-    #[snafu(display("JMAP server has identity with invalid email address `{}'", address))]
+    #[error("JMAP server has identity with invalid email address `{}'", address)]
     InvalidEmailAddress { address: String },
 
-    #[snafu(display("Could not parse JMAP identity domain `{}': {}", domain, source))]
+    #[error("Could not parse JMAP identity domain `{}': {}", domain, source)]
     ParseIdentityDomain { domain: String, source: fqdn::Error },
 
-    #[snafu(display("No JMAP identities match sender `{}'", sender))]
+    #[error("No JMAP identities match sender `{}'", sender)]
     NoIdentitiesForSender { sender: String },
 
-    #[snafu(display("Could not index mailboxes: {}", source))]
+    #[error("Could not index mailboxes: {}", source)]
     IndexMailboxes { source: remote::Error },
 
-    #[snafu(display("No recipients specified. Did you forget to specify `-t'?"))]
+    #[error("No recipients specified. Did you forget to specify `-t'?")]
     NoRecipients {},
 
-    #[snafu(display("Could not send email: {}", source))]
+    #[error("Could not send email: {}", source)]
     SendEmail { source: remote::Error },
 }
 
@@ -67,19 +66,19 @@ pub fn send(read_recipients: bool, recipients: Vec<String>, config: Config) -> R
         &mut stdio_crlf,
         loe::Config::default().transform(loe::TransformMode::Crlf),
     )
-    .context(ReadStdinSnafu {})?;
+    .map_err(|source| Error::ReadStdin {source})?;
 
-    let email_string = String::from_utf8(stdio_crlf.into_inner()).context(ReadCrlfStdinSnafu {})?;
+    let email_string = String::from_utf8(stdio_crlf.into_inner()).map_err(|source| Error::ReadCrlfStdin {source})?;
     let parsed_email =
-        email_parser::email::Email::parse(email_string.as_bytes()).context(ParseEmailSnafu {})?;
+        email_parser::email::Email::parse(email_string.as_bytes()).map_err(|source| Error::ParseEmail {source})?;
 
-    let mut remote = Remote::open(&config).context(OpenRemoteSnafu {})?;
+    let mut remote = Remote::open(&config).map_err(|source| Error::OpenRemote {source})?;
 
     let identity_id =
         get_identity_id_for_sender_address(&parsed_email.sender.address, &mut remote)?;
     let mailboxes = remote
         .get_mailboxes(&config.tags)
-        .context(IndexMailboxesSnafu {})?;
+        .map_err(|source| Error::IndexMailboxes {source})?;
 
     let from_address = address_to_string(&parsed_email.sender.address);
     let addresses_to_iter = |a| {
@@ -115,7 +114,9 @@ pub fn send(read_recipients: bool, recipients: Vec<String>, config: Config) -> R
         recipients.into_iter().collect()
     };
 
-    ensure!(!to_addresses.is_empty(), NoRecipientsSnafu {});
+    if to_addresses.is_empty() {
+        Err(Error::NoRecipients {})?
+    }
 
     debug!(
         "Envelope sender is `{}', recipients are `{:?}'",
@@ -131,7 +132,7 @@ pub fn send(read_recipients: bool, recipients: Vec<String>, config: Config) -> R
             &to_addresses,
             &email_string,
         )
-        .context(SendEmailSnafu {})?;
+        .map_err(|source| Error::SendEmail {source})?;
 
     Ok(())
 }
@@ -142,8 +143,9 @@ fn get_identity_id_for_sender_address(
 ) -> Result<jmap::Id> {
     let sender_local_part = &sender_address.local_part;
     let sender_domain = &sender_address.domain;
-    let sender_fqdn = FQDN::from_str(sender_domain.as_ref()).context(ParseSenderDomainSnafu {
-        domain: sender_domain.as_ref(),
+    let sender_fqdn = FQDN::from_str(sender_domain.as_ref()).map_err(|source| Error::ParseSenderDomain {
+        domain: sender_domain.as_ref().into(),
+        source
     })?;
     debug!(
         "Sender is `{}@{}', fqdn `{}'",
@@ -151,7 +153,7 @@ fn get_identity_id_for_sender_address(
     );
 
     // Find the identity which matches the sender of this email.
-    let identities = remote.get_identities().context(GetIdentitiesSnafu {})?;
+    let identities = remote.get_identities().map_err(|source| Error::GetIdentities {source})?;
     let sender_identities: Vec<_> = identities
         .iter()
         .map(|identity| {
@@ -159,10 +161,10 @@ fn get_identity_id_for_sender_address(
                 identity
                     .email
                     .split_once('@')
-                    .context(InvalidEmailAddressSnafu {
-                        address: &identity.email,
+                    .ok_or(Error::InvalidEmailAddress {
+                        address: identity.email.clone(),
                     })?;
-            let fqdn = FQDN::from_str(domain).context(ParseIdentityDomainSnafu { domain })?;
+            let fqdn = FQDN::from_str(domain).map_err(|source| Error::ParseIdentityDomain { domain: domain.into(), source })?;
             Ok((identity, local_part, fqdn))
         })
         .collect::<Result<Vec<_>>>()?
@@ -172,12 +174,11 @@ fn get_identity_id_for_sender_address(
         })
         .map(|(identity, local_part, _)| (identity, local_part))
         .collect();
-    ensure!(
-        !sender_identities.is_empty(),
-        NoIdentitiesForSenderSnafu {
+    if sender_identities.is_empty() {
+        Err(Error::NoIdentitiesForSender {
             sender: address_to_string(sender_address),
-        }
-    );
+        })?
+    };
     // Prefer a concrete identity over a wildcard.
     let identity = sender_identities
         .iter()
