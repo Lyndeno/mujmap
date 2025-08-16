@@ -8,8 +8,6 @@ use notmuch::Database;
 use notmuch::Exclude;
 use notmuch::Message;
 use regex::Regex;
-use snafu::prelude::*;
-use snafu::Snafu;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
@@ -30,35 +28,35 @@ lazy_static! {
         HashSet::from(["attachment", "signed", "encrypted"]);
 }
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[snafu(display("Could not canonicalize given path: {}", source))]
+    #[error("Could not canonicalize given path: {}", source)]
     Canonicalize { source: io::Error },
 
-    #[snafu(display(
+    #[error(
         "Given maildir path `{}' is not a subdirectory of the notmuch root `{}'",
         mail_dir.to_string_lossy(),
         notmuch_root.to_string_lossy(),
-    ))]
+    )]
     MailDirNotASubdirOfNotmuchRoot {
         mail_dir: PathBuf,
         notmuch_root: PathBuf,
         source: StripPrefixError,
     },
 
-    #[snafu(display("Could not open notmuch database: {}", source))]
+    #[error("Could not open notmuch database: {}", source)]
     OpenDatabase { source: notmuch::Error },
 
-    #[snafu(display("Could not create Maildir dir `{}': {}", path.to_string_lossy(), source))]
+    #[error("Could not create Maildir dir `{}': {}", path.to_string_lossy(), source)]
     CreateMaildirDir { path: PathBuf, source: io::Error },
 
-    #[snafu(display("Could not create notmuch query `{}': {}", query, source))]
+    #[error("Could not create notmuch query `{}': {}", query, source)]
     CreateNotmuchQuery {
         query: String,
         source: notmuch::Error,
     },
 
-    #[snafu(display("Could not execute notmuch query `{}': {}", query, source))]
+    #[error("Could not execute notmuch query `{}': {}", query, source)]
     ExecuteNotmuchQuery {
         query: String,
         source: notmuch::Error,
@@ -103,19 +101,20 @@ impl Local {
             None,
             None,
         )
-        .context(OpenDatabaseSnafu {})?;
+        .map_err(|source| Error::OpenDatabase {source})?;
 
         // Get the relative directory of the maildir to the database path.
-        let canonical_db_path = db.path().canonicalize().context(CanonicalizeSnafu {})?;
+        let canonical_db_path = db.path().canonicalize().map_err(|source| Error::Canonicalize {source})?;
         let canonical_mail_dir_path = mail_dir
             .as_ref()
             .canonicalize()
-            .context(CanonicalizeSnafu {})?;
+            .map_err(|source| Error::Canonicalize {source})?;
         let relative_mail_dir = canonical_mail_dir_path
             .strip_prefix(&canonical_db_path)
-            .context(MailDirNotASubdirOfNotmuchRootSnafu {
-                mail_dir: &canonical_mail_dir_path,
-                notmuch_root: &canonical_db_path,
+            .map_err(|source| Error::MailDirNotASubdirOfNotmuchRoot {
+                mail_dir: canonical_mail_dir_path.clone(),
+                notmuch_root: canonical_db_path.clone(),
+                source
             })?;
 
         // Build the query to search for all mail in our maildir.
@@ -129,7 +128,7 @@ impl Local {
                 &canonical_mail_dir_path.join("new"),
                 &canonical_mail_dir_path.join("tmp"),
             ] {
-                fs::create_dir_all(path).context(CreateMaildirDirSnafu { path })?;
+                fs::create_dir_all(path).map_err(|source| Error::CreateMaildirDir { path: path.into(), source })?;
             }
         }
 
@@ -211,14 +210,16 @@ impl Local {
         let query =
             self.db
                 .create_query(query_string)
-                .with_context(|_| CreateNotmuchQuerySnafu {
-                    query: query_string,
+                .map_err(|source| Error::CreateNotmuchQuery {
+                    query: query_string.into(),
+                    source
                 })?;
         query.set_omit_excluded(Exclude::False);
         let messages = query
             .search_messages()
-            .with_context(|_| ExecuteNotmuchQuerySnafu {
-                query: query_string,
+            .map_err(|source| Error::ExecuteNotmuchQuery {
+                query: query_string.into(),
+                source
             })?;
         Ok(messages
             .into_iter()
