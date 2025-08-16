@@ -1,5 +1,4 @@
 use serde::Deserialize;
-use snafu::prelude::*;
 use std::{
     fs, io,
     path::{Path, PathBuf},
@@ -7,38 +6,36 @@ use std::{
     string::FromUtf8Error,
 };
 
-use snafu::Snafu;
-
-#[derive(Debug, Snafu)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[snafu(display("Could not read config file `{}': {}", filename.to_string_lossy(), source))]
+    #[error("Could not read config file `{}': {}", filename.to_string_lossy(), source)]
     ReadConfigFile {
         filename: PathBuf,
         source: io::Error,
     },
 
-    #[snafu(display("Could not parse config file `{}': {}", filename.to_string_lossy(), source))]
+    #[error("Could not parse config file `{}': {}", filename.to_string_lossy(), source)]
     ParseConfigFile {
         filename: PathBuf,
         source: toml::de::Error,
     },
 
-    #[snafu(display("Can only specify one of `fqdn' or `session_url' in the same config"))]
+    #[error("Can only specify one of `fqdn' or `session_url' in the same config")]
     FqdnOrSessionUrl {},
 
-    #[snafu(display("Must specify at least 1 for `concurrent_downloads'"))]
+    #[error("Must specify at least 1 for `concurrent_downloads'")]
     ConcurrentDownloadsIsZero {},
 
-    #[snafu(display("`directory_separator' must not be empty"))]
+    #[error("`directory_separator' must not be empty")]
     EmptyDirectorySeparator {},
 
-    #[snafu(display("Could not execute password command: {}", source))]
+    #[error("Could not execute password command: {}", source)]
     ExecutePasswordCommand { source: io::Error },
 
-    #[snafu(display("Password command exited with `{}': {}", status, stderr))]
+    #[error("Password command exited with `{}': {}", status, stderr)]
     PasswordCommandStatus { status: ExitStatus, stderr: String },
 
-    #[snafu(display("Could not decode password command output as utf-8"))]
+    #[error("Could not decode password command output as utf-8")]
     DecodePasswordCommand { source: FromUtf8Error },
 }
 
@@ -267,26 +264,25 @@ fn default_convert_dos_to_unix() -> bool {
 
 impl Config {
     pub fn from_file(path: impl AsRef<Path>) -> Result<Self> {
-        let contents = fs::read_to_string(path.as_ref()).context(ReadConfigFileSnafu {
-            filename: path.as_ref(),
+        let contents = fs::read_to_string(path.as_ref()).map_err(|source| Error::ReadConfigFile {
+            filename: path.as_ref().into(),
+            source
         })?;
-        let config: Self = toml::from_str(contents.as_str()).context(ParseConfigFileSnafu {
-            filename: path.as_ref(),
+        let config: Self = toml::from_str(contents.as_str()).map_err(|source| Error::ParseConfigFile {
+            filename: path.as_ref().into(),
+            source
         })?;
 
         // Perform final validation.
-        ensure!(
-            !(config.fqdn.is_some() && config.session_url.is_some()),
-            FqdnOrSessionUrlSnafu {}
-        );
-        ensure!(
-            config.concurrent_downloads > 0,
-            ConcurrentDownloadsIsZeroSnafu {}
-        );
-        ensure!(
-            !config.tags.directory_separator.is_empty(),
-            EmptyDirectorySeparatorSnafu {}
-        );
+        if (config.fqdn.is_some() && config.session_url.is_some()) {
+            Err(Error::FqdnOrSessionUrl {})?
+        }
+        if config.concurrent_downloads < 1 {
+            Err(Error::ConcurrentDownloadsIsZero {})?
+        };
+        if config.tags.directory_separator.is_empty() {
+            Err(Error::EmptyDirectorySeparator {})?
+        };
         Ok(config)
     }
 
@@ -295,16 +291,15 @@ impl Config {
             .arg("-c")
             .arg(self.password_command.as_str())
             .output()
-            .context(ExecutePasswordCommandSnafu {})?;
-        ensure!(
-            output.status.success(),
-            PasswordCommandStatusSnafu {
+            .map_err(|source| Error::ExecutePasswordCommand {source})?;
+        if !output.status.success() {
+            Err(Error::PasswordCommandStatus {
                 status: output.status,
                 stderr: String::from_utf8(output.stderr)
                     .unwrap_or_else(|e| format!("<utf-8 decode error: {e}>")),
-            }
-        );
-        let stdout = String::from_utf8(output.stdout).context(DecodePasswordCommandSnafu {})?;
+            })?
+        };
+        let stdout = String::from_utf8(output.stdout).map_err(|source| Error::DecodePasswordCommand {source})?;
         Ok(stdout.trim().to_string())
     }
 }
