@@ -5,6 +5,8 @@ use std::collections::HashMap;
 
 #[derive(Serialize)]
 pub enum CapabilityKind {
+    #[serde(rename = "urn:ietf:params:jmap:core")]
+    Core,
     #[serde(rename = "urn:ietf:params:jmap:mail")]
     Mail,
     #[serde(rename = "urn:ietf:params:jmap:submission")]
